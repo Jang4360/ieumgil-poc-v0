@@ -1,5 +1,11 @@
 # 02. 보행 가능 Way 추출, Anchor 식별, Segment 생성 계획
 
+## 실행/검증 전제
+
+- 실제 구현 검증은 `backend`, `postgresql`, `graphhopper`를 각각 컨테이너화하고 `docker compose`로 함께 실행하는 방식을 기준으로 한다.
+- 보행 네트워크 생성 결과 확인과 GraphHopper import 연계 확인도 동일한 `docker compose` 환경에서 재현 가능해야 한다.
+- 로컬 단일 프로세스 실행은 개발 편의용 보조 수단으로만 두고, 문서상 완료 검증 기준은 compose 기반 통합 실행 성공으로 본다.
+
 ## 목적
 
 블루프린트의 보행 네트워크 생성 플로우 `2~4번`을 구현 가능 단위로 정리한다. 핵심은 `busan.osm.pbf`에서 보행 가능 `way`를 추출하고, `anchor node` 기준으로 분해해 `road_segments`를 만드는 것이다.

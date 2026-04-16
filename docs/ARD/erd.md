@@ -2,13 +2,13 @@
 
 > **작성일:** 2026-04-12  
 > **작성자:** 김응서  
-> **최종 수정일:** 2026-04-13
+> **최종 수정일:** 2026-04-16
 
 ---
 
 ## 1. 설계 기준
 
-- 기준 문서: `2026-04-10 최종_프로젝트_기획서.md`, `2026-04-11_MVP_화면명세서.md`, `2026-04-09_기능명세서.md`
+- 기준 문서: `2026-04-10 최종_프로젝트_기획서.md`, `2026-04-11_MVP_화면명세서.md`, `2026-04-09_기능명세서.md`, `2026-04-16_ACCESSIBLE_ROUTING_POC_RESTART_BLUEPRINT.md`
 - `created_at`, `updated_at`은 JPA Auditing 기반 `BaseEntity` 공통 컬럼으로 관리하므로 테이블별 상세 명세에서는 생략한다.
 - soft delete가 필요하면 `deleted_at`도 공통 컬럼으로 관리한다.
 - 숫자 ID를 참조하는 외래키 컬럼은 자동 증가 컬럼이 아니므로 `BIGSERIAL`이 아니라 `BIGINT`로 표기한다.
@@ -37,6 +37,7 @@
 
 - `road_nodes`
 - `road_segments`
+- `segment_features`
 - `route_logs`
 - `route_log_points`
 
@@ -64,6 +65,7 @@ erDiagram
 
     ROAD_NODES ||--o{ ROAD_SEGMENTS : from_node
     ROAD_NODES ||--o{ ROAD_SEGMENTS : to_node
+    ROAD_SEGMENTS ||--o{ SEGMENT_FEATURES : has
     ROUTE_LOGS ||--o{ ROUTE_LOG_POINTS : has
 
     USERS {
@@ -142,17 +144,24 @@ erDiagram
         BIGINT to_node_id FK
         GEOMETRY geom
         NUMERIC length_meter
+        BIGINT source_way_id
+        BIGINT source_osm_from_node_id
+        BIGINT source_osm_to_node_id
+        INT segment_ordinal
         NUMERIC avg_slope_percent
         NUMERIC width_meter
-        BOOLEAN has_stairs
-        BOOLEAN has_curb_gap
-        BOOLEAN has_elevator
-        BOOLEAN has_crosswalk
-        BOOLEAN has_signal
-        BOOLEAN has_audio_signal
-        BOOLEAN has_braille_block
-        ENUM surface_type
-        BIGINT vertexId FK
+        VARCHAR walk_access
+        ENUM crossing_state
+        ENUM width_state
+        ENUM surface_state
+    }
+
+    SEGMENT_FEATURES {
+        BIGSERIAL feature_id PK
+        BIGINT edge_id FK
+        VARCHAR feature_type
+        GEOMETRY geom
+        JSONB value
     }
 
     ROUTE_LOGS {
@@ -408,15 +417,20 @@ erDiagram
 
 보행 네트워크 그래프의 정점(Vertex)을 저장한다.
 
-길이 갈라지거나 연결되는 지점, 속성이 바뀌는 지점, OSM 기준 node를 관리한다.
+`OSM way` 전체 node를 저장하지 않고, 실제 세그먼트 연결에 사용된 `anchor node`만 관리한다.
 
 ### 컬럼 명세
 
 | 한글명 | 영어명 | 타입 | NULL | DEFAULT |
 | --- | --- | --- | --- | --- |
 | 정점 ID | vertexId | BIGSERIAL | NOT NULL |  |
-| OSM 노드 ID | osm_node_id | BIGINT | NULL |  |
+| OSM 노드 ID | osm_node_id | BIGINT | NOT NULL |  |
 | 노드 좌표 | point | GEOMETRY(POINT, 4326) | NOT NULL |  |
+
+### 비고
+
+- `road_nodes`에는 모든 OSM node를 적재하지 않는다.
+- `road_segments`의 시작/종료점으로 실제 사용된 anchor node만 저장한다.
 
 ---
 
@@ -428,6 +442,8 @@ erDiagram
 
 길찾기 비용 계산, 위험도 판단, 지도 선형 표시의 기준이 되는 핵심 테이블이다.
 
+`OSM way` 원본을 그대로 저장하지 않고, `anchor node` 사이로 분해된 segment를 저장한다.
+
 ### 컬럼 명세
 
 | 한글명 | 영어명 | 타입 | NULL | DEFAULT |
@@ -437,31 +453,69 @@ erDiagram
 | 종료 노드 ID | to_node_id | BIGINT | NOT NULL |  |
 | 선형 좌표 | geom | GEOMETRY(LINESTRING, 4326) | NOT NULL |  |
 | 길이(미터) | length_meter | NUMERIC(10,2) | NOT NULL |  |
+| 원천 OSM way ID | source_way_id | BIGINT | NOT NULL |  |
+| 원천 시작 OSM node ID | source_osm_from_node_id | BIGINT | NOT NULL |  |
+| 원천 종료 OSM node ID | source_osm_to_node_id | BIGINT | NOT NULL |  |
+| 세그먼트 순번 | segment_ordinal | INT | NOT NULL |  |
+| 보행 가능 상태 | walk_access | VARCHAR(30) | NOT NULL | UNKNOWN |
 | 평균 경사도(%) | avg_slope_percent | NUMERIC(6,2) | NULL |  |
 | 보행 폭(미터) | width_meter | NUMERIC(6,2) | NULL |  |
-| 계단 여부 | has_stairs | BOOLEAN | NOT NULL | false |
-| 단차 여부 | has_curb_gap | BOOLEAN | NOT NULL | false |
-| 엘리베이터 연결 여부 | has_elevator | BOOLEAN | NOT NULL | false |
-| 횡단보도 포함 여부 | has_crosswalk | BOOLEAN | NOT NULL | false |
-| 신호등 여부 | has_signal | BOOLEAN | NOT NULL | false |
-| 음향신호기 여부 | has_audio_signal | BOOLEAN | NOT NULL | false |
-| 점자블록 여부 | has_braille_block | BOOLEAN | NOT NULL | false |
-| 노면 타입 | surface_type | ENUM | NULL | UNKNOWN |
-| 정점 ID | vertexId | BIGINT | NOT NULL |  |
+| 점자블록 상태 | braille_block_state | ENUM | NOT NULL | UNKNOWN |
+| 음향신호기 상태 | audio_signal_state | ENUM | NOT NULL | UNKNOWN |
+| 경사로 상태 | curb_ramp_state | ENUM | NOT NULL | UNKNOWN |
+| 폭 상태 | width_state | ENUM | NOT NULL | UNKNOWN |
+| 노면 상태 | surface_state | ENUM | NOT NULL | UNKNOWN |
+| 계단 상태 | stairs_state | ENUM | NOT NULL | UNKNOWN |
+| 엘리베이터 상태 | elevator_state | ENUM | NOT NULL | UNKNOWN |
+| 횡단 상태 | crossing_state | ENUM | NOT NULL | UNKNOWN |
 
 ### enum 값
 
-- `surface_type`: `ASPHALT`, `BLOCK`, `CONCRETE`, `GRAVEL`, `UNPAVED`, `UNKNOWN`
+- `braille_block_state`, `audio_signal_state`, `curb_ramp_state`, `stairs_state`, `elevator_state`: `YES`, `NO`, `UNKNOWN`
+- `width_state`: `ADEQUATE_150`, `ADEQUATE_120`, `NARROW`, `UNKNOWN`
+- `surface_state`: `PAVED`, `GRAVEL`, `UNPAVED`, `OTHER`, `UNKNOWN`
+- `crossing_state`: `TRAFFIC_SIGNALS`, `UNCONTROLLED`, `UNMARKED`, `NO`, `UNKNOWN`
 
 ### 비고
 
 - 이 테이블은 보행 네트워크의 실제 길 구간을 표현하며, 여러 간선을 조합해 최종 경로를 계산한다.
-- `from_node_id`, `to_node_id`는 간선의 시작/종료 정점을 표현한다.
-- `vertexId`는 도식화 또는 추가 참조가 필요한 경우를 고려해 보조 정점 참조 컬럼으로 둔다.
+- 안정 식별 기준은 `source_way_id + source_osm_from_node_id + source_osm_to_node_id`이며 `segment_ordinal`은 보조 검증용이다.
+- 기존 boolean 중심 컬럼(`has_stairs`, `has_curb_gap`, `has_elevator`, `has_crosswalk`, `has_signal`, `has_audio_signal`, `has_braille_block`, `surface_type`)은 블루프린트 기준 상태 enum 컬럼으로 대체한다.
+- `avg_slope_percent`, `width_meter`는 ETL 계산값으로 유지한다.
+- 프로필별 경사 통과 여부(`visual_safe`, `visual_fast`, `wheelchair_safe`, `wheelchair_fast`)는 `road_segments` 컬럼으로 저장하지 않고 GraphHopper import 또는 EV 채움 단계에서 `avg_slope_percent`를 해석해 파생값으로 계산한다.
+- 상세 feature 매칭 결과나 표시용 개별 객체는 `segment_features`에 저장하고, `road_segments`에는 최종 해석 결과만 반영한다.
+- `UNIQUE (source_way_id, source_osm_from_node_id, source_osm_to_node_id)` 제약을 둔다.
 
 ---
 
-## 10) route_logs
+## 10) segment_features
+
+### 역할
+
+`road_segments`에 매칭된 개별 feature 객체를 저장한다.
+
+횡단보도, 점자블록, 음향신호기, 경사도 측정값 같은 원천 feature를 edge 단위로 추적하거나 지도에 표시할 때 사용한다.
+
+### 컬럼 명세
+
+| 한글명 | 영어명 | 타입 | NULL | DEFAULT |
+| --- | --- | --- | --- | --- |
+| feature 식별자 | feature_id | BIGSERIAL | NOT NULL |  |
+| 소속 edge | edge_id | BIGINT | NOT NULL |  |
+| feature 종류 | feature_type | VARCHAR(50) | NOT NULL |  |
+| 표시 위치/구간 | geom | GEOMETRY(GEOMETRY, 4326) | NOT NULL |  |
+| 세부 값 | value | JSONB | NULL |  |
+
+### 비고
+
+- `road_segments 1 : N segment_features` 관계를 가진다.
+- `geom`은 feature 성격에 따라 `POINT`, `LINESTRING` 등으로 저장할 수 있도록 범용 geometry 타입을 사용한다.
+- `value`는 `3.0`, `true`, 추가 메타데이터 등을 함께 담을 수 있도록 `JSONB`로 둔다.
+- `feature_type` 예시는 `CROSSWALK`, `AUDIO_SIGNAL`, `BRAILLE_BLOCK`, `CURB_RAMP`, `ELEVATOR`, `SLOPE`, `WIDTH`다.
+
+---
+
+## 11) route_logs
 
 ### 역할
 
@@ -493,7 +547,7 @@ erDiagram
 
 ---
 
-## 11) route_log_points
+## 12) route_log_points
 
 ### 역할
 
@@ -548,6 +602,11 @@ erDiagram
 
 - `road_nodes 1 : N road_segments`
 - 시작 노드와 종료 노드를 기준으로 간선이 연결된다.
+
+### road_segments - segment_features
+
+- `road_segments 1 : N segment_features`
+- 하나의 보행 segment는 0개 이상의 개별 feature를 가질 수 있다.
 
 ### route_logs - route_log_points
 

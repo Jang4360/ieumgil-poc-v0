@@ -1,0 +1,6 @@
+.git
+.gradle
+**/build
+**/.DS_Store
+etl/data/raw/*.pbf
+runtime

@@ -38,6 +38,12 @@
 - import 단계에서 per-edge 저장소 조회를 하지 않는다.
 - 운영은 가능하면 import보다 artifact load 중심으로 설계한다.
 
+## 검증 원칙
+
+- 검증은 단순 `gradle build` 성공만으로 완료 처리하지 않는다.
+- 구현 확인이 필요한 작업은 로컬에서 `docker compose`를 실행해 최소한 `backend`, `postgresql`, `graphhopper`가 함께 기동되고 연결되는지 확인한다.
+- 통합 실행 검증 결과는 작업 리뷰에 실행 방식과 확인 범위를 함께 남긴다.
+
 ## 참조 문서
 
 - 저장소 공통 범위: `docs/plans/01_restart_scope_and_constraints.md`

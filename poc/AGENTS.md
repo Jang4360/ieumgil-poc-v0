@@ -29,6 +29,13 @@
 - 운영 환경에서는 import보다 load를 우선하고, import는 별도 작업으로 분리한다.
 - import와 artifact 생성 결과는 실행 이력으로 추적 가능해야 한다. 최소한 way 수, anchor 수, segment 수, 중복 키 수, artifact 출력 경로를 남긴다.
 
+## 검증 기준
+
+- 검증은 단순 `./gradlew build` 또는 테스트 태스크 성공만으로 끝내지 않는다.
+- 실제 구현 확인이 필요한 변경은 로컬에서 `docker compose`를 실행해 `backend`, `postgresql`, `graphhopper`를 함께 올리고 동작을 확인한다.
+- 최소한 애플리케이션 기동, DB 연결, GraphHopper 연계 또는 artifact 로드 경로 중 변경 영향이 있는 부분은 compose 환경에서 직접 확인한다.
+- 리뷰 문서에는 실행한 compose 명령, 확인한 컨테이너, 통과/실패 범위를 요약해 남긴다.
+
 ## 백엔드 구조 가이드
 
 - 파서, segment 생성기, 저장 모델, GraphHopper import adapter를 분리한다.

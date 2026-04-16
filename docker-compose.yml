@@ -1,0 +1,96 @@
+name: ieumgil-poc-v0
+
+services:
+  postgresql:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: poc
+      POSTGRES_USER: poc
+      POSTGRES_PASSWORD: poc
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./postgresql/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U poc -d poc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: poc/Dockerfile
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      POC_NETWORK_BUILD_ENABLED: "true"
+      POC_NETWORK_BUILD_SOURCE_PBF: /data/raw/busan.osm.pbf
+      POC_NETWORK_BUILD_OUTPUT_DIRECTORY: /workspace/output/latest
+      POC_NETWORK_BUILD_BUILD_IDENTIFIER: docker-compose-local
+      POC_NETWORK_BUILD_CODE_REVISION: docker-compose
+      POC_NETWORK_BUILD_FAIL_ON_DUPLICATE_STABLE_KEY: "true"
+      POC_NETWORK_PERSISTENCE_ENABLED: "true"
+      POC_NETWORK_PERSISTENCE_JDBC_URL: jdbc:postgresql://postgresql:5432/poc
+      POC_NETWORK_PERSISTENCE_USERNAME: poc
+      POC_NETWORK_PERSISTENCE_PASSWORD: poc
+      POC_NETWORK_PERSISTENCE_TRUNCATE_BEFORE_LOAD: "true"
+    volumes:
+      - ./etl/data/raw:/data/raw:ro
+      - ./runtime/backend-output:/workspace/output
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: "no"
+
+  graphhopper-importer:
+    build:
+      context: .
+      dockerfile: poc/Dockerfile
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: none
+      POC_GRAPHHOPPER_IMPORT_ENABLED: "true"
+      POC_GRAPHHOPPER_IMPORT_SOURCE_PBF: /data/raw/busan.osm.pbf
+      POC_GRAPHHOPPER_IMPORT_ARTIFACT_DIRECTORY: /graphhopper/artifacts/latest
+      POC_GRAPHHOPPER_IMPORT_GRAPH_DIRECTORY_NAME: graph-cache
+      POC_GRAPHHOPPER_IMPORT_BUILD_IDENTIFIER: docker-compose-local
+      POC_GRAPHHOPPER_IMPORT_CODE_REVISION: docker-compose
+      POC_GRAPHHOPPER_IMPORT_JDBC_URL: jdbc:postgresql://postgresql:5432/poc
+      POC_GRAPHHOPPER_IMPORT_USERNAME: poc
+      POC_GRAPHHOPPER_IMPORT_PASSWORD: poc
+      POC_GRAPHHOPPER_IMPORT_DELETE_EXISTING_ARTIFACT: "true"
+      POC_GRAPHHOPPER_IMPORT_FAIL_ON_DUPLICATE_STABLE_KEY: "true"
+      POC_GRAPHHOPPER_IMPORT_FAIL_ON_UNMATCHED_SEGMENT: "true"
+    volumes:
+      - ./etl/data/raw:/data/raw:ro
+      - ./runtime/graphhopper:/graphhopper/artifacts
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    restart: "no"
+
+  graphhopper:
+    build:
+      context: .
+      dockerfile: graphhopper/Dockerfile
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: servlet
+      SERVER_PORT: 8989
+      POC_GRAPHHOPPER_LOAD_ENABLED: "true"
+      POC_GRAPHHOPPER_LOAD_ARTIFACT_DIRECTORY: /graphhopper/artifacts/latest
+      POC_GRAPHHOPPER_LOAD_GRAPH_DIRECTORY_NAME: graph-cache
+      POC_GRAPHHOPPER_LOAD_READY_MARKER: /graphhopper/artifacts/latest/load-ready.txt
+      POC_GRAPHHOPPER_LOAD_ALLOW_WRITES: "false"
+    volumes:
+      - ./runtime/graphhopper:/graphhopper/artifacts
+    ports:
+      - "8989:8989"
+    depends_on:
+      graphhopper-importer:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /graphhopper/artifacts/latest/load-ready.txt"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres-data:

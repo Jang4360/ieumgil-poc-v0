@@ -1,3 +1,37 @@
 spring:
   application:
     name: poc
+
+poc:
+  network-build:
+    enabled: false
+    source-pbf: etl/data/raw/busan.osm.pbf
+    output-directory: build/network-snapshots/latest
+    build-identifier: local-manual
+    code-revision: unknown
+    fail-on-duplicate-stable-key: true
+  network-persistence:
+    enabled: false
+    jdbc-url: jdbc:postgresql://localhost:5432/poc
+    username: poc
+    password: poc
+    truncate-before-load: true
+  graphhopper-import:
+    enabled: false
+    source-pbf: etl/data/raw/busan.osm.pbf
+    artifact-directory: build/graphhopper-artifacts/latest
+    graph-directory-name: graph-cache
+    build-identifier: local-manual
+    code-revision: unknown
+    jdbc-url: jdbc:postgresql://localhost:5432/poc
+    username: poc
+    password: poc
+    delete-existing-artifact: true
+    fail-on-duplicate-stable-key: true
+    fail-on-unmatched-segment: true
+  graphhopper-load:
+    enabled: false
+    artifact-directory: build/graphhopper-artifacts/latest
+    graph-directory-name: graph-cache
+    ready-marker: build/graphhopper-artifacts/latest/load-ready.txt
+    allow-writes: false
