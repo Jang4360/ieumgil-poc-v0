@@ -16,7 +16,8 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  network-builder:
+    profiles: ["bootstrap"]
     build:
       context: .
       dockerfile: poc/Dockerfile
@@ -42,6 +43,7 @@ services:
     restart: "no"
 
   graphhopper-importer:
+    profiles: ["bootstrap"]
     build:
       context: .
       dockerfile: poc/Dockerfile
@@ -58,15 +60,32 @@ services:
       POC_GRAPHHOPPER_IMPORT_PASSWORD: poc
       POC_GRAPHHOPPER_IMPORT_DELETE_EXISTING_ARTIFACT: "true"
       POC_GRAPHHOPPER_IMPORT_FAIL_ON_DUPLICATE_STABLE_KEY: "true"
-      POC_GRAPHHOPPER_IMPORT_FAIL_ON_UNMATCHED_SEGMENT: "true"
+      POC_GRAPHHOPPER_IMPORT_FAIL_ON_UNMATCHED_SEGMENT: "false"
     volumes:
       - ./etl/data/raw:/data/raw:ro
       - ./runtime/graphhopper:/graphhopper/artifacts
     depends_on:
-      postgresql:
-        condition: service_healthy
+      network-builder:
+        condition: service_completed_successfully
     restart: "no"
 
+  backend:
+    build:
+      context: .
+      dockerfile: poc/Dockerfile
+    environment:
+      SPRING_MAIN_WEB_APPLICATION_TYPE: servlet
+      SERVER_PORT: 8080
+      POC_TRANSIT_MIXED_ENABLED: "true"
+      POC_GRAPHHOPPER_LOAD_ENABLED: "true"
+      POC_GRAPHHOPPER_LOAD_ARTIFACT_DIRECTORY: /graphhopper/artifacts/latest
+      POC_GRAPHHOPPER_LOAD_GRAPH_DIRECTORY_NAME: graph-cache
+      POC_GRAPHHOPPER_LOAD_READY_MARKER: /graphhopper/artifacts/latest/backend-load-ready.txt
+      POC_GRAPHHOPPER_LOAD_ALLOW_WRITES: "false"
+    volumes:
+      - ./runtime/graphhopper:/graphhopper/artifacts
+    ports:
+      - "8081:8080"
   graphhopper:
     build:
       context: .
@@ -83,14 +102,23 @@ services:
       - ./runtime/graphhopper:/graphhopper/artifacts
     ports:
       - "8989:8989"
-    depends_on:
-      graphhopper-importer:
-        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "test -f /graphhopper/artifacts/latest/load-ready.txt"]
       interval: 5s
       timeout: 5s
       retries: 10
+
+  frontend:
+    build:
+      context: .
+      dockerfile: FE/Dockerfile
+      args:
+        VITE_KAKAO_JAVASCRIPT_KEY: ${KAKAO_JAVASCRIPT_KEY}
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_started
 
 volumes:
   postgres-data:

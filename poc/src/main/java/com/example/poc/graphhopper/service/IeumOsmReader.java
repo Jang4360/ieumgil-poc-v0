@@ -133,6 +133,10 @@ public class IeumOsmReader extends OSMReader {
 		way.setTag(IeumGraphEncodedValues.STAIRS_STATE, segment.stairsState());
 		way.setTag(IeumGraphEncodedValues.ELEVATOR_STATE, segment.elevatorState());
 		way.setTag(IeumGraphEncodedValues.CROSSING_STATE, segment.crossingState());
+		way.setTag(IeumGraphEncodedValues.VISUAL_SAFE_PASS, isVisualSafePass(segment));
+		way.setTag(IeumGraphEncodedValues.VISUAL_FAST_PASS, isVisualFastPass(segment));
+		way.setTag(IeumGraphEncodedValues.WHEELCHAIR_SAFE_PASS, isWheelchairSafePass(segment));
+		way.setTag(IeumGraphEncodedValues.WHEELCHAIR_FAST_PASS, isWheelchairFastPass(segment));
 	}
 
 	public GraphImportStats importStats() {
@@ -281,5 +285,90 @@ public class IeumOsmReader extends OSMReader {
 		}
 		builder.append(')');
 		return builder.toString();
+	}
+
+	private boolean isVisualSafePass(RoadSegment segment) {
+		return walkAccessPass(segment.walkAccess())
+				&& !"YES".equals(segment.stairsState())
+				&& crossingAudioPass(segment)
+				&& slopePass(segment.avgSlopePercent(), 5d)
+				&& !isExplicitNo(segment.brailleBlockState());
+	}
+
+	private boolean isVisualFastPass(RoadSegment segment) {
+		return walkAccessPass(segment.walkAccess())
+				&& !"YES".equals(segment.stairsState())
+				&& crossingAudioPass(segment)
+				&& slopePass(segment.avgSlopePercent(), 8d);
+	}
+
+	private boolean isWheelchairSafePass(RoadSegment segment) {
+		return walkAccessPass(segment.walkAccess())
+				&& !"YES".equals(segment.stairsState())
+				&& crossingCurbRampPass(segment)
+				&& surfacePass(segment.surfaceState())
+				&& widthPass(segment.widthState())
+				&& slopePass(segment.avgSlopePercent(), 3d);
+	}
+
+	private boolean isWheelchairFastPass(RoadSegment segment) {
+		return walkAccessPass(segment.walkAccess())
+				&& !"YES".equals(segment.stairsState())
+				&& crossingCurbRampPass(segment)
+				&& surfacePass(segment.surfaceState())
+				&& widthPass(segment.widthState())
+				&& slopePass(segment.avgSlopePercent(), 5d);
+	}
+
+	private boolean crossingAudioPass(RoadSegment segment) {
+		if ("NO".equals(segment.crossingState())) {
+			return true;
+		}
+		if ("YES".equals(segment.audioSignalState())) {
+			return true;
+		}
+		return "UNKNOWN".equals(segment.crossingState()) || "UNKNOWN".equals(segment.audioSignalState());
+	}
+
+	private boolean crossingCurbRampPass(RoadSegment segment) {
+		if ("NO".equals(segment.crossingState())) {
+			return true;
+		}
+		if ("YES".equals(segment.curbRampState())) {
+			return true;
+		}
+		return "UNKNOWN".equals(segment.crossingState()) || "UNKNOWN".equals(segment.curbRampState());
+	}
+
+	private boolean surfacePass(String surfaceState) {
+		return !isExplicitBad(surfaceState, "GRAVEL", "UNPAVED");
+	}
+
+	private boolean widthPass(String widthState) {
+		return !isExplicitBad(widthState, "INADEQUATE", "NARROW");
+	}
+
+	private boolean slopePass(Double avgSlopePercent, double thresholdPercent) {
+		return avgSlopePercent == null || avgSlopePercent < thresholdPercent;
+	}
+
+	private boolean walkAccessPass(String walkAccess) {
+		return !isExplicitNo(walkAccess);
+	}
+
+	private boolean isExplicitNo(String value) {
+		return "NO".equals(value);
+	}
+
+	private boolean isExplicitBad(String value, String... blockedValues) {
+		if (value == null || value.isBlank() || "UNKNOWN".equals(value)) {
+			return false;
+		}
+		for (String blockedValue : blockedValues) {
+			if (blockedValue.equals(value)) {
+				return true;
+			}
+		}
+		return false;
 	}
 }

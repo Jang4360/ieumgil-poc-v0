@@ -4,3 +4,5 @@
 **/.DS_Store
 etl/data/raw/*.pbf
 runtime
+FE/node_modules
+FE/dist

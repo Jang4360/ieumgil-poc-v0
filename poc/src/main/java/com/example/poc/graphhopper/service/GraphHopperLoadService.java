@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Optional;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,14 @@ public class GraphHopperLoadService {
 		String loadedAtUtc = Instant.now(clock).toString();
 		loadState.markReady(graphDirectory, loadedAtUtc);
 		Files.writeString(readyMarker, loadedAtUtc + System.lineSeparator());
+	}
+
+	public boolean isReady() {
+		return loadState.isReady() && hopper != null;
+	}
+
+	public Optional<IeumGraphHopper> currentHopper() {
+		return isReady() ? Optional.of(hopper) : Optional.empty();
 	}
 
 	@PreDestroy

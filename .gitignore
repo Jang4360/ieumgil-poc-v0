@@ -1,2 +1,4 @@
 .env
 runtime/
+FE/node_modules/
+FE/dist/

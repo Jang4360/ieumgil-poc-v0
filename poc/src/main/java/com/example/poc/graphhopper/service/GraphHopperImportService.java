@@ -82,7 +82,7 @@ public class GraphHopperImportService {
 					stats.importedEdgeCount(),
 					hopper.getBaseGraph().getNodes(),
 					hopper.getBaseGraph().getEdges(),
-					graphHopperFactory.profileName());
+					graphHopperFactory.profileNames());
 			metadataWriter.write(metadata, artifactDirectory);
 			return metadata;
 		} finally {

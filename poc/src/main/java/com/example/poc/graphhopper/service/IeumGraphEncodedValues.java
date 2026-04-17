@@ -20,6 +20,10 @@ public final class IeumGraphEncodedValues {
 	public static final String STAIRS_STATE = "ieum_stairs_state";
 	public static final String ELEVATOR_STATE = "ieum_elevator_state";
 	public static final String CROSSING_STATE = "ieum_crossing_state";
+	public static final String VISUAL_SAFE_PASS = "ieum_visual_safe_pass";
+	public static final String VISUAL_FAST_PASS = "ieum_visual_fast_pass";
+	public static final String WHEELCHAIR_SAFE_PASS = "ieum_wheelchair_safe_pass";
+	public static final String WHEELCHAIR_FAST_PASS = "ieum_wheelchair_fast_pass";
 
 	private IeumGraphEncodedValues() {
 	}
@@ -36,6 +40,10 @@ public final class IeumGraphEncodedValues {
 				new StringEncodedValue(SURFACE_STATE, 8),
 				new StringEncodedValue(STAIRS_STATE, 8),
 				new StringEncodedValue(ELEVATOR_STATE, 8),
-				new StringEncodedValue(CROSSING_STATE, 8));
+				new StringEncodedValue(CROSSING_STATE, 8),
+				new SimpleBooleanEncodedValue(VISUAL_SAFE_PASS),
+				new SimpleBooleanEncodedValue(VISUAL_FAST_PASS),
+				new SimpleBooleanEncodedValue(WHEELCHAIR_SAFE_PASS),
+				new SimpleBooleanEncodedValue(WHEELCHAIR_FAST_PASS));
 	}
 }

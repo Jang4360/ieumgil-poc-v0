@@ -35,3 +35,16 @@ poc:
     graph-directory-name: graph-cache
     ready-marker: build/graphhopper-artifacts/latest/load-ready.txt
     allow-writes: false
+  transit-mixed:
+    enabled: true
+    max-candidates: 3
+    odsay-api-base-url: ${ODSAY_API_BASE_URL:https://api.odsay.com/v1/api}
+    odsay-api-key: ${ODSAY_API_KEY:}
+    odsay-server-ip: ${ODSAY_SERVER_IP:}
+    busan-bims-api-base-url: ${BUSAN_BIMS_API_BASE_URL:https://apis.data.go.kr/6260000/BusanBIMS}
+    busan-bims-service-key-encoding: ${BUSAN_BIMS_SERVICE_KEY_ENCODING:}
+    busan-bims-service-key-decoding: ${BUSAN_BIMS_SERVICE_KEY_DECODING:}
+    busan-subway-operation-api-base-url: ${BUSAN_SUBWAY_OPERATION_API_BASE_URL:https://api.odcloud.kr/api}
+    busan-subway-operation-api-path: ${BUSAN_SUBWAY_OPERATION_API_PATH:}
+    busan-subway-operation-service-key-encoding: ${BUSAN_SUBWAY_OPERATION_SERVICE_KEY_ENCODING:}
+    busan-subway-operation-service-key-decoding: ${BUSAN_SUBWAY_OPERATION_SERVICE_KEY_DECODING:}

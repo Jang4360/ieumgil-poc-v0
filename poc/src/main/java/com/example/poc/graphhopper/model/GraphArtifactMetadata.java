@@ -1,5 +1,7 @@
 package com.example.poc.graphhopper.model;
 
+import java.util.List;
+
 public record GraphArtifactMetadata(
 		String sourcePbfPath,
 		String artifactDirectory,
@@ -17,5 +19,5 @@ public record GraphArtifactMetadata(
 		int importedEdgeCount,
 		int graphNodeCount,
 		int graphEdgeCount,
-		String profileName) {
+		List<String> profileNames) {
 }

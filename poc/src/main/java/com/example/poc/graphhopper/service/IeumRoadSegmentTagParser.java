@@ -21,6 +21,10 @@ public class IeumRoadSegmentTagParser implements TagParser {
 	private final StringEncodedValue stairsStateEnc;
 	private final StringEncodedValue elevatorStateEnc;
 	private final StringEncodedValue crossingStateEnc;
+	private final BooleanEncodedValue visualSafePassEnc;
+	private final BooleanEncodedValue visualFastPassEnc;
+	private final BooleanEncodedValue wheelchairSafePassEnc;
+	private final BooleanEncodedValue wheelchairFastPassEnc;
 
 	public IeumRoadSegmentTagParser(com.graphhopper.routing.ev.EncodedValueLookup lookup) {
 		this.dbMatchEnc = lookup.getBooleanEncodedValue(IeumGraphEncodedValues.DB_MATCH);
@@ -34,6 +38,10 @@ public class IeumRoadSegmentTagParser implements TagParser {
 		this.stairsStateEnc = lookup.getStringEncodedValue(IeumGraphEncodedValues.STAIRS_STATE);
 		this.elevatorStateEnc = lookup.getStringEncodedValue(IeumGraphEncodedValues.ELEVATOR_STATE);
 		this.crossingStateEnc = lookup.getStringEncodedValue(IeumGraphEncodedValues.CROSSING_STATE);
+		this.visualSafePassEnc = lookup.getBooleanEncodedValue(IeumGraphEncodedValues.VISUAL_SAFE_PASS);
+		this.visualFastPassEnc = lookup.getBooleanEncodedValue(IeumGraphEncodedValues.VISUAL_FAST_PASS);
+		this.wheelchairSafePassEnc = lookup.getBooleanEncodedValue(IeumGraphEncodedValues.WHEELCHAIR_SAFE_PASS);
+		this.wheelchairFastPassEnc = lookup.getBooleanEncodedValue(IeumGraphEncodedValues.WHEELCHAIR_FAST_PASS);
 	}
 
 	@Override
@@ -49,5 +57,9 @@ public class IeumRoadSegmentTagParser implements TagParser {
 		stairsStateEnc.setString(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.STAIRS_STATE, "UNKNOWN"));
 		elevatorStateEnc.setString(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.ELEVATOR_STATE, "UNKNOWN"));
 		crossingStateEnc.setString(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.CROSSING_STATE, "UNKNOWN"));
+		visualSafePassEnc.setBool(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.VISUAL_SAFE_PASS, false));
+		visualFastPassEnc.setBool(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.VISUAL_FAST_PASS, false));
+		wheelchairSafePassEnc.setBool(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.WHEELCHAIR_SAFE_PASS, false));
+		wheelchairFastPassEnc.setBool(false, edgeId, edgeIntAccess, way.getTag(IeumGraphEncodedValues.WHEELCHAIR_FAST_PASS, false));
 	}
 }
